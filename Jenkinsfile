@@ -30,7 +30,7 @@ pipeline {
             }
         }
 
-        stage('Static Code Checking with pylint') {
+        stage('Static Code Checking') {
             steps {
                 script {
                     sh 'find . -name \\*.py | xargs pylint -f parseable | tee pylint.log'
@@ -98,6 +98,7 @@ pipeline {
                     withCredentials([file(credentialsId: 'kubeconfig-aks', variable: 'KUBECONFIG')]) {
                         sh "kubectl config view --kubeconfig=$KUBECONFIG"
                         sh "kubectl get namespaces --kubeconfig=$KUBECONFIG"
+                        sh "sed -i 's|\${ENV_IMAGE}|${img}|g' deployment.yaml"
                         sh "kubectl apply -f deployment.yaml --kubeconfig=$KUBECONFIG"
                         sh "kubectl apply -f service.yaml --kubeconfig=$KUBECONFIG"
                     }
