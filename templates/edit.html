@@ -1,0 +1,68 @@
+{% extends 'template.html' %}
+
+{% block head %}
+<title>Edit Details</title>
+{% endblock %}
+
+{% block body %}
+<div class="container">
+
+    <div class="banner">
+        <h1>Employee Data</h1>
+    </div>
+
+    <div class="form-holder">
+        <!-- {% if error %} -->
+        <h2 style="color: #cc0000;">{{ error }}</h2>
+        <!-- {% endif %} -->
+
+        <!-- {% if emp %} -->
+        <form action="/edit/{{ emp.id }}" method="POST">
+            <h3>Edit {{ emp.name }}'s Details</h3>
+            <hr>
+            &nbsp;
+            <div class="row">
+                <label for="name">Name <span class="red">*</span></label>
+                <input id="name" type="text" name="name" value="{{ emp.name }}" required />
+            </div>
+            <div>
+                <label>Gender <span class="red">*</span></label>
+                <div>
+                    <div>
+                        <input type="radio" value="Male" id="male" name="gender" {% if emp.gender=='Male' %} checked {%
+                            endif %} />
+                        <label for="male" class="radio"><span>Male</span></label>
+                    </div>
+                    <div>
+                        <input type="radio" value="Female" id="female" name="gender" {% if emp.gender=='Female' %}
+                            checked {% endif %} />
+                        <label for="female" class="radio"><span>Female</span></label>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <label for="address">Address <span class="red">*</span></label>
+                <input id="address" type="address" name="address" value="{{ emp.address }}" required />
+            </div>
+            <div class="row">
+                <label for="phone">Phone <span class="red">*</span></label>
+                <input id="phone" type="number" name="phone" value="{{ emp.phone }}" required />
+            </div>
+            <div class="row">
+                <label for="salary">Salary <span class="red">*</span></label>
+                <input id="salary" type="number" name="salary" value="{{ emp.salary }}" required />
+            </div>
+            <div class="row">
+                <label for="department">Department <span class="red">*</span></label>
+                <input id="department" type="text" name="department" value="{{ emp.department }}" required />
+            </div>
+            <div class="btn-block">
+                <a href="/" class="back-btn">Back to home</a>
+                <input type="submit" value="Save changes">
+            </div>
+        </form>
+        <!-- {% endif %} -->
+    </div>
+
+</div>
+{% endblock %}

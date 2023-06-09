@@ -1,0 +1,118 @@
+{% extends 'template.html' %}
+
+{% block head %}
+<title>Employee Data</title>
+<style>
+    .form-holder {
+        width: 60%;
+        margin-left: 15%;
+        margin-bottom: 50px;
+        padding: 20px;
+        border: 1px solid #eee;
+        margin-top: 20px;
+        border-radius: 4px;
+    }
+
+    .card {
+        padding: 20px;
+        border: 1px solid #eee;
+        margin: 20px 0 30px 0;
+        border-radius: 4px;
+        box-shadow: 10px 7px 10px #ddd;
+        background-color: #f0f0f0;
+    }
+
+    .links {
+        width: 100%;
+        display: flex;
+        justify-content: right;
+    }
+
+    .action {
+        margin-left: 15px;
+        color: #333;
+        background-color: #fff;
+        padding: 8px 30px !important;
+        border-radius: 4px;
+        border: 1px solid #ccc;
+        font-size: 15px;
+        width: auto !important;
+    }
+
+    .action:hover {
+        cursor: pointer;
+    }
+
+    .edit-btn {
+        text-decoration: none;
+        color: #333;
+        background-color: #fff;
+        padding: 5px 30px;
+        border-radius: 4px;
+        border: 1px solid #ccc;
+        font-size: 15px;
+    }
+
+    .edit-btn:hover {
+        background-color: #f3f3f3;
+    }
+
+    .add-new-btn {
+        margin-left: 15px;
+        width: 150px;
+        padding: 10px;
+        border: none;
+        border-radius: 5px;
+        background: #6A82FB;
+        font-size: 16px;
+        color: #fff;
+        cursor: pointer;
+        text-decoration: none;
+        margin: 10px 0 20px 0;
+        display: block;
+        text-align: center;
+    }
+
+    .add-new-btn:hover {
+        cursor: pointer;
+        background-color: cornflowerblue;
+    }
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="container">
+ 
+    <div class="banner">
+        <h1>Employee Data</h1>
+        <!-- <h2>Weclome to Employee Portal </h2> -->
+    </div>
+    <div class="form-holder">
+        <h2 style="color: #cc0000;">{{ error }}</h2>
+        <a href="/add" class="add-new-btn">Add new employee</a>
+        {% for emp in employees %}
+        <div class="card">
+            <div>
+                <h4>{{ emp.name }}</h4>
+                <p><span>Department:</span> {{ emp.department }}</p>
+                <p><span>Salary: </span>${{ emp.salary }}</p>
+                <p><span>Address: </span>{{ emp.address }}</p>
+                <p><span>Gender: </span>{{ emp.gender }}</p>
+                <p><span>Phone: </span>{{ emp.phone }}</p>
+            </div>
+
+            <div class="links">
+                <a href="/edit/{{ emp.id }}" class="edit-btn">Edit</a>
+                <form action="/delete" method="POST" class="delete-form">
+                    <input type="hidden" name="emp_id" value='{{ emp.id }}'>
+                    <input type="submit" name="submit" class="action"
+                        onclick="return confirm('Are you sure to remove this employee?')" value="Delete">
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+
+    </div>
+
+</div>
+{% endblock %}
