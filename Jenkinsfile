@@ -1,4 +1,5 @@
-def img;
+def img
+
 pipeline {
     environment {
         registry = "nitesh99sharma/emp-portal-project"
@@ -7,6 +8,7 @@ pipeline {
         githubCredential = 'GitHub-Creds'
         dockerImage = ''
     }
+
     agent any
 
     stages {
@@ -15,10 +17,11 @@ pipeline {
                 script {
                     git branch: 'main',
                     credentialsId: githubCredential,
-                     url: 'https://github.com/niteshsharma99/EMP-Portal-Project-DevOps.git'
+                    url: 'https://github.com/niteshsharma99/Emp-Portal-Devops-Project.git'
                 }
             }
         }
+
         stage('Installing packages') {
             steps {
                 script {
@@ -26,6 +29,7 @@ pipeline {
                 }
             }
         }
+
         stage('Static Code Checking') {
             steps {
                 script {
@@ -37,6 +41,7 @@ pipeline {
                 }
             }
         }
+
         stage("Testing with pytest") {
             steps {
                 script {
@@ -48,6 +53,7 @@ pipeline {
                 }
             }
         }
+
         stage ('Clean Up') {
             steps {
                 sh returnStatus: true, script: 'docker stop $(docker ps -a | grep ${JOB_NAME} | awk \'{print $1}\')'
@@ -55,6 +61,7 @@ pipeline {
                 sh returnStatus: true, script: 'docker rm ${JOB_NAME}'
             }
         }
+
         stage('Build Image') {
             steps {
                 script {
@@ -64,41 +71,56 @@ pipeline {
                 }
             }
         }
+
         stage('Push To DockerHub') {
             steps {
                 script {
-                    docker.withRegistry( 'https://registry.hub.docker.com ', registryCredential ) {
+                    docker.withRegistry('https://registry.hub.docker.com', registryCredential) {
                         dockerImage.push()
                     }
                 }
             }
         }
         
-        stage('Deploy') {
-           steps {
+        stage('Deploy to containers') {
+            steps {
                 sh label: '', script: "docker run -d --name ${JOB_NAME} -p 5000:5000 ${img}"
-          }
+            }
         }
+        
         stage('Deploy to Kubernetes aks') {
-                    steps {
-                        script {
-                            withCredentials([file(credentialsId: 'kubeconfig-aks', variable: 'KUBECONFIG')]) {
-                                sh "kubectl config view --kubeconfig=$KUBECONFIG"
-                                sh "kubectl get namespaces --kubeconfig=$KUBECONFIG"
-                                sh "kubectl apply -f deployment.yaml --kubeconfig=$KUBECONFIG"
-                                sh "kubectl apply -f service.yaml --kubeconfig=$KUBECONFIG"
-                            }
-                        }
+            steps {
+                script {
+                    // Print the contents of the workspace directory
+                    sh 'ls -R'
+                    
+                    // Rest of your deployment steps
+                    withCredentials([file(credentialsId: 'kubeconfig-aks', variable: 'KUBECONFIG')]) {
+                        sh "kubectl config view --kubeconfig=$KUBECONFIG"
+                        sh "kubectl get namespaces --kubeconfig=$KUBECONFIG"
+                        sh "kubectl apply -f deployment.yaml --kubeconfig=$KUBECONFIG"
+                        sh "kubectl apply -f service.yaml --kubeconfig=$KUBECONFIG"
                     }
                 }
+            }
+        }
+
     }
-post {
-        always {
-            slackSend channel: '#devops-project',
-                      color: 'good',
-                      message: "Build Status: ${currentBuild.currentResult}",
-                      teamDomain: 'jenkinsintegr-kfn1541',
-                      tokenCredentialId: 'slack-integration' // Replace with the ID of the Jenkins credential containing your Slack API token
+    
+   post {
+    always {
+        script {
+            def buildStatus = currentBuild.currentResult ?: 'UNKNOWN'
+            def color = buildStatus == 'SUCCESS' ? 'good' : 'danger'
+            
+            slackSend(
+                channel: '#devops-project',
+                color: color,
+                message: "Build ${env.BUILD_NUMBER} ${buildStatus}: Stage ${env.STAGE_NAME}",
+                teamDomain: 'jenkinsintegr-kfn1541',
+                tokenCredentialId: 'slack-integration'
+            )
         }
     }
+   }
 }
