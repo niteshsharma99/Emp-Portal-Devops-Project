@@ -30,7 +30,7 @@ pipeline {
             }
         }
 
-        stage('Static Code Checking') {
+        stage('Static Code Checking with pylint') {
             steps {
                 script {
                     sh 'find . -name \\*.py | xargs pylint -f parseable | tee pylint.log'
