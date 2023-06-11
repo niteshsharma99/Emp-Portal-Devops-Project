@@ -4,13 +4,20 @@ pipeline {
     environment {
         registry = "nitesh99sharma/emp-portal-project"
         registryCredential = 'DOCKERHUB'
-        KUBECONFIG = credentials('kubeconfig-aks')
         githubCredential = 'GitHub-Creds'
         dockerImage = ''
         scannerHome = tool 'sonar4.8'
     }
 
     agent any
+
+    parameters {
+        choice(
+            choices: ['Dev', 'Prod'],
+            description: 'Select the target cluster',
+            name: 'TARGET_CLUSTER'
+        )
+    }
 
     stages {
         stage('Checkout project') {
@@ -58,7 +65,7 @@ pipeline {
                 }
             }
         }
-        
+
         stage('SonarQube Quality Gates') {
             steps {
                 script {
@@ -119,40 +126,53 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Deploy to containers') {
             steps {
                 // Deploy Docker image to containers
-                sh label: '', script: "docker run -d --name ${JOB_NAME} -p 5000:5000 ${img}"
+                sh label: '', script: "docker run -d --name ${JOB_NAME} -p 5001:5000 ${img}"
             }
         }
-        
-        stage('Deploy to Kubernetes aks') {
+
+        stage('Deploy to Kubernetes AKS') {
             steps {
                 script {
                     // Print the contents of the workspace directory
                     sh 'ls -R'
-                    
+
+                    // Retrieve the selected target cluster
+                    def kubeconfig
+                    def clusterName = "${params.TARGET_CLUSTER}".toLowerCase()
+
+                    // Set the kubeconfig based on the selected target cluster
+                    if (clusterName == 'dev') {
+                        kubeconfig = 'kubeconfig-dev-k8s'
+                    } else if (clusterName == 'prod') {
+                        kubeconfig = 'kubeconfig-prod-k8s'
+                    } else {
+                        error "Invalid target cluster selected: ${params.TARGET_CLUSTER}"
+                    }
+
                     // Rest of your deployment steps
-                    withCredentials([file(credentialsId: 'kubeconfig-aks', variable: 'KUBECONFIG')]) {
+                    withCredentials([file(credentialsId: kubeconfig, variable: 'KUBECONFIG')]) {
                         sh "kubectl config view --kubeconfig=$KUBECONFIG" // View Kubernetes configuration
                         sh "kubectl get namespaces --kubeconfig=$KUBECONFIG" // Get Kubernetes namespaces
-                        sh "sed -i 's|\${ENV_IMAGE}|${img}|g' deployment.yaml" // Replace placeholder with Docker image name in deployment.yaml
-                        sh "kubectl apply -f deployment.yaml --kubeconfig=$KUBECONFIG" // Apply deployment configuration
-                        sh "kubectl apply -f service.yaml --kubeconfig=$KUBECONFIG" // Apply service configuration
+                        sh "sed -i 's|\${ENV_IMAGE}|${img}|g' dev/deployment.yaml" // Replace placeholder with Docker image name in deployment.yaml
+                        sh "sed -i 's|\${ENV_IMAGE}|${img}|g' prod/deployment.yaml"
+                        sh "kubectl apply -f ${clusterName}/deployment.yaml --kubeconfig=$KUBECONFIG" // Apply deployment configuration
+                        sh "kubectl apply -f ${clusterName}/service.yaml --kubeconfig=$KUBECONFIG" // Apply service configuration
                     }
                 }
             }
         }
-
     }
-    
+
     post {
         always {
             script {
                 def buildStatus = currentBuild.currentResult ?: 'UNKNOWN'
                 def color = buildStatus == 'SUCCESS' ? 'good' : 'danger'
-            
+
                 slackSend(
                     channel: '#devops-project',
                     color: color,
