@@ -94,7 +94,7 @@ pipeline {
                 // Stop and remove Docker containers
                 sh returnStatus: true, script: 'docker stop $(docker ps -a | grep ${JOB_NAME} | awk \'{print $1}\')'
                 sh returnStatus: true, script: 'docker rmi $(docker images | grep ${registry} | awk \'{print $3}\') --force'
-                sh returnStatus: true, script: 'docker -f rm ${JOB_NAME}'
+                sh returnStatus: true, script: 'docker rm -f ${JOB_NAME}'
             }
         }
 
