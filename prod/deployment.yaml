@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: emp-portal-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: emp-portal
+  template:
+    metadata:
+      labels:
+        app: emp-portal
+    spec:
+      containers:
+        - name: emp-portal-container
+          image: "${ENV_IMAGE}"
+          ports:
+            - containerPort: 5000
