@@ -16,6 +16,7 @@ pipeline {
         stage('Checkout project') {
             steps {
                 script {
+                    // Checkout the project from GitHub
                     git branch: 'main',
                     credentialsId: githubCredential,
                     url: 'https://github.com/niteshsharma99/Emp-Portal-Devops-Project.git'
@@ -26,6 +27,7 @@ pipeline {
         stage('Installing packages') {
             steps {
                 script {
+                    // Install required Python packages
                     sh 'pip install -r requirements.txt'
                 }
             }
@@ -34,6 +36,7 @@ pipeline {
         stage('Static Code Checking') {
             steps {
                 script {
+                    // Run pylint on Python files and generate a report
                     sh 'find . -name \\*.py | xargs pylint -f parseable | tee pylint.log'
                     recordIssues(
                         tool: pyLint(pattern: 'pylint.log'),
@@ -47,6 +50,7 @@ pipeline {
             steps {
                 script {
                     withSonarQubeEnv('sonar') {
+                        // Run SonarQube scanner for code analysis
                         sh '''${scannerHome}/bin/sonar-scanner \
                             -Dsonar.projectKey=DevOps-Project \
                             -Dsonar.sources=.'''
@@ -60,6 +64,7 @@ pipeline {
                 script {
                     withSonarQubeEnv('sonar') {
                         timeout(time: 1, unit: 'MINUTES') {
+                            // Wait for SonarQube quality gates to pass/fail
                             def qg = waitForQualityGate()
                             if (qg.status != 'OK') {
                                 error "Pipeline aborted due to quality gate failure: ${qg.status}"
@@ -74,8 +79,10 @@ pipeline {
             steps {
                 script {
                     withPythonEnv('python3') {
+                        // Install required Python packages for testing
                         sh 'pip install pytest'
                         sh 'pip install flask_sqlalchemy'
+                        // Run pytest for unit testing
                         sh 'pytest test_app.py'
                     }
                 }
@@ -84,6 +91,7 @@ pipeline {
 
         stage ('Clean Up') {
             steps {
+                // Stop and remove Docker containers
                 sh returnStatus: true, script: 'docker stop $(docker ps -a | grep ${JOB_NAME} | awk \'{print $1}\')'
                 sh returnStatus: true, script: 'docker rmi $(docker images | grep ${registry} | awk \'{print $3}\') --force'
                 sh returnStatus: true, script: 'docker rm ${JOB_NAME}'
@@ -93,6 +101,7 @@ pipeline {
         stage('Build Image') {
             steps {
                 script {
+                    // Build Docker image with a unique tag
                     img = registry + ":${env.BUILD_ID}"
                     println("${img}")
                     dockerImage = docker.build("${img}")
@@ -104,6 +113,7 @@ pipeline {
             steps {
                 script {
                     docker.withRegistry('https://registry.hub.docker.com', registryCredential) {
+                        // Push Docker image to DockerHub
                         dockerImage.push()
                     }
                 }
@@ -112,10 +122,8 @@ pipeline {
         
         stage('Deploy to containers') {
             steps {
-                script {
-                    def containerPort = findAvailablePort()
-                    sh "docker run -d --name ${JOB_NAME} -p ${containerPort}:5000 ${img}"
-                }
+                // Deploy Docker image to containers
+                sh label: '', script: "docker run -d --name ${JOB_NAME} -p 5001:5000 ${img}"
             }
         }
         
@@ -127,15 +135,16 @@ pipeline {
                     
                     // Rest of your deployment steps
                     withCredentials([file(credentialsId: 'kubeconfig-aks', variable: 'KUBECONFIG')]) {
-                        sh "kubectl config view --kubeconfig=$KUBECONFIG"
-                        sh "kubectl get namespaces --kubeconfig=$KUBECONFIG"
-                        sh "sed -i 's|\${ENV_IMAGE}|${img}|g' deployment.yaml"
-                        sh "kubectl apply -f deployment.yaml --kubeconfig=$KUBECONFIG"
-                        sh "kubectl apply -f service.yaml --kubeconfig=$KUBECONFIG"
+                        sh "kubectl config view --kubeconfig=$KUBECONFIG" // View Kubernetes configuration
+                        sh "kubectl get namespaces --kubeconfig=$KUBECONFIG" // Get Kubernetes namespaces
+                        sh "sed -i 's|\${ENV_IMAGE}|${img}|g' deployment.yaml" // Replace placeholder with Docker image name in deployment.yaml
+                        sh "kubectl apply -f deployment.yaml --kubeconfig=$KUBECONFIG" // Apply deployment configuration
+                        sh "kubectl apply -f service.yaml --kubeconfig=$KUBECONFIG" // Apply service configuration
                     }
                 }
             }
         }
+
     }
     
     post {
@@ -143,7 +152,7 @@ pipeline {
             script {
                 def buildStatus = currentBuild.currentResult ?: 'UNKNOWN'
                 def color = buildStatus == 'SUCCESS' ? 'good' : 'danger'
-                
+            
                 slackSend(
                     channel: '#devops-project',
                     color: color,
@@ -153,18 +162,5 @@ pipeline {
                 )
             }
         }
-    }
-}
-
-def findAvailablePort() {
-    def portRange = (5000..6000).toList() // Convert IntRange to a list of integers
-    def port = portRange.find { port ->
-        def result = sh script: "docker port ${JOB_NAME} $port", returnStatus: true
-        result != 0 // Return the first port that is not already in use
-    }
-    if (port) {
-        return port
-    } else {
-        error "No available port found in the range ${portRange}"
     }
 }
