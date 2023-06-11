@@ -7,6 +7,7 @@ pipeline {
         KUBECONFIG = credentials('kubeconfig-aks')
         githubCredential = 'GitHub-Creds'
         dockerImage = ''
+        scannerHome = tool 'sonar4.8'
     }
 
     agent any
@@ -38,6 +39,33 @@ pipeline {
                         tool: pyLint(pattern: 'pylint.log'),
                         unstableTotalHigh: 100
                     )
+                }
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                script {
+                    withSonarQubeEnv('sonar') {
+                        sh '''${scannerHome}/bin/sonar-scanner \
+                            -Dsonar.projectKey=DevOps-Project \
+                            -Dsonar.sources=.'''
+                    }
+                }
+            }
+        }
+        
+        stage('SonarQube Quality Gates') {
+            steps {
+                script {
+                    withSonarQubeEnv('sonar') {
+                        timeout(time: 1, unit: 'MINUTES') {
+                            def qg = waitForQualityGate()
+                            if (qg.status != 'OK') {
+                                error "Pipeline aborted due to quality gate failure: ${qg.status}"
+                            }
+                        }
+                    }
                 }
             }
         }
