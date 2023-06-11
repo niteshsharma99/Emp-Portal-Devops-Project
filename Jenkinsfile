@@ -157,7 +157,7 @@ pipeline {
 }
 
 def findAvailablePort() {
-    def portRange = 5000..6000 // Define the range of ports to check
+    def portRange = (5000..6000).toList() // Convert IntRange to a list of integers
     def port = portRange.find { port ->
         def result = sh script: "docker port ${JOB_NAME} $port", returnStatus: true
         result != 0 // Return the first port that is not already in use
